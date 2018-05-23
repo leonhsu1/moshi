@@ -98,12 +98,7 @@ internal class KotlinJsonAdapter<T>(
         val paramType = param.type
         if (!paramType.isMarkedNullable) {
           when {
-            paramType.isSubtypeOf(Number::class.createType()) -> values[i] = null
-            paramType == String::class.createType() -> values[i] = null
-            paramType == Boolean::class.createType() -> values[i] = null
-            paramType.isSubtypeOf(List::class.starProjectedType) -> values[i] = null
-            paramType.isSubtypeOf(Array<Any>::class.starProjectedType) -> values[i] = null
-            paramType.isSubtypeOf(Map::class.starProjectedType) -> values[i] = null
+            paramType.isSubtypeOf(List::class.starProjectedType) -> values[i] = emptyList<T>()
             else -> throw JsonDataException("Required value ${constructor.parameters[i].name} missing at ${reader.path}")
           }
         }else {
