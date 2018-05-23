@@ -33,9 +33,12 @@ import kotlin.reflect.KFunction
 import kotlin.reflect.KMutableProperty1
 import kotlin.reflect.KParameter
 import kotlin.reflect.KProperty1
+import kotlin.reflect.full.createType
 import kotlin.reflect.full.findAnnotation
+import kotlin.reflect.full.isSubtypeOf
 import kotlin.reflect.full.memberProperties
 import kotlin.reflect.full.primaryConstructor
+import kotlin.reflect.full.starProjectedType
 import kotlin.reflect.jvm.isAccessible
 import kotlin.reflect.jvm.javaField
 import kotlin.reflect.jvm.javaType
@@ -90,12 +93,21 @@ internal class KotlinJsonAdapter<T>(
 
     // Confirm all parameters are present, optional, or nullable.
     for (i in 0 until constructorSize) {
-      if (values[i] === ABSENT_VALUE && !constructor.parameters[i].isOptional) {
-        if (!constructor.parameters[i].type.isMarkedNullable) {
-          throw JsonDataException(
-              "Required value '${constructor.parameters[i].name}' missing at ${reader.path}")
+      if ((values[i] === ABSENT_VALUE || values[i] == null) && !constructor.parameters[i].isOptional) {
+        val param = constructor.parameters[i]
+        val paramType = param.type
+        if (!paramType.isMarkedNullable) {
+          when {
+            paramType.isSubtypeOf(Number::class.createType()) -> values[i] = 0
+            paramType == String::class.createType() -> values[i] = ""
+            paramType == Boolean::class.createType() -> values[i] = false
+            paramType.isSubtypeOf(List::class.starProjectedType) -> values[i] = emptyList<Any>()
+            paramType.isSubtypeOf(Map::class.starProjectedType) -> values[i] = emptyMap<Any,Any>()
+            else -> throw JsonDataException("Required value ${constructor.parameters[i].name} missing at ${reader.path}")
+          }
+        }else {
+          values[i] = null // Replace absent with null.
         }
-        values[i] = null // Replace absent with null.
       }
     }
 
